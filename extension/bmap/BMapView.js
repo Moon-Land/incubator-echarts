@@ -20,10 +20,6 @@
 
 var echarts = require("echarts");
 
-var _util = require("zrender/lib/core/util");
-
-var clone = _util.clone;
-
 /*
 * Licensed to the Apache Software Foundation (ASF) under one
 * or more contributor license agreements.  See the NOTICE file
@@ -42,6 +38,16 @@ var clone = _util.clone;
 * specific language governing permissions and limitations
 * under the License.
 */
+function isEmptyObject(obj) {
+  for (var key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 var _default = echarts.extendComponentView({
   type: 'bmap',
   render: function (bMapModel, ecModel, api) {
@@ -113,8 +119,8 @@ var _default = echarts.extendComponentView({
 
     if (JSON.stringify(originalStyle) !== mapStyleStr) {
       // FIXME May have blank tile when dragging if setMapStyle
-      if (Object.keys(newMapStyle).length) {
-        bmap.setMapStyle(clone(newMapStyle));
+      if (!isEmptyObject(newMapStyle2)) {
+        bmap.setMapStyle(echarts.util.clone(newMapStyle));
       }
 
       bMapModel.__mapStyle = JSON.parse(mapStyleStr);
@@ -129,8 +135,8 @@ var _default = echarts.extendComponentView({
 
     if (JSON.stringify(originalStyle2) !== mapStyleStr2) {
       // FIXME May have blank tile when dragging if setMapStyle
-      if (Object.keys(newMapStyle2).length) {
-        bmap.setMapStyleV2(clone(newMapStyle2));
+      if (!isEmptyObject(newMapStyle2)) {
+        bmap.setMapStyleV2(echarts.util.clone(newMapStyle2));
       }
 
       bMapModel.__mapStyle2 = JSON.parse(mapStyleStr2);

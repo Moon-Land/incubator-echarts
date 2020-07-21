@@ -204,8 +204,12 @@ BMapCoordSys.create = function (ecModel, api) {
       bmapRoot.style.cssText = 'width:100%;height:100%'; // Not support IE8
 
       bmapRoot.classList.add('ec-extension-bmap');
-      root.appendChild(bmapRoot);
-      var bmap = bmapModel.__bmap = new BMap.Map(bmapRoot);
+      root.appendChild(bmapRoot); // initialize bmap
+
+      var mapOptions = bmapModel.get('mapOptions') || {}; // Not support `mapType`, use `bmap.setMapType(MapType)` instead.
+
+      delete mapOptions.mapType;
+      var bmap = bmapModel.__bmap = new BMap.Map(bmapRoot, mapOptions);
       var overlay = new Overlay(viewportRoot);
       bmap.addOverlay(overlay); // Override
 

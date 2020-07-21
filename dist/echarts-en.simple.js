@@ -25578,7 +25578,7 @@ var proto = Scheduler.prototype;
  * @param {Object} payload
  */
 proto.restoreData = function (ecModel, payload) {
-    // TODO: Only restroe needed series and components, but not all components.
+    // TODO: Only restore needed series and components, but not all components.
     // Currently `restoreData` of all of the series and component will be called.
     // But some independent components like `title`, `legend`, `graphic`, `toolbox`,
     // `tooltip`, `axisPointer`, etc, do not need series refresh when `setOption`,
@@ -30401,7 +30401,7 @@ listProto.mapDimension = function (coordDim, idx) {
  * Initialize from data
  * @param {Array.<Object|number|Array>} data source or data or data provider.
  * @param {Array.<string>} [nameLIst] The name of a datum is used on data diff and
- *        defualt label/tooltip.
+ *        default label/tooltip.
  *        A name can be specified in encode.itemName,
  *        or dataItem.name (only for series option data),
  *        or provided in nameList from outside.
@@ -33594,7 +33594,7 @@ symbolProto._updateCommon = function (data, idx, symbolSize, seriesScope) {
     }
     else {
         symbolPath.setStyle({
-            opacity: null,
+            opacity: 1,
             shadowBlur: null,
             shadowOffsetX: null,
             shadowOffsetY: null,
@@ -35779,7 +35779,7 @@ var dataSample = function (seriesType) {
                 var valueAxis = coordSys.getOtherAxis(baseAxis);
                 var extent = baseAxis.getExtent();
                 // Coordinste system has been resized
-                var size = extent[1] - extent[0];
+                var size = Math.abs(extent[1] - extent[0]);
                 var rate = Math.round(data.count() / size);
                 if (rate > 1) {
                     var sampler;
@@ -38378,7 +38378,7 @@ function makeCategoryTicks(axis, tickModel) {
 
     // Cache to avoid calling interval function repeatly.
     return listCacheSet(ticksCache, optionTickInterval, {
-        ticks: ticks, tickCategoryInterval: tickCategoryInterval
+        ticks: ticks, tickCategoryInterval: tickCategoryInterval, optionTickInterval: optionTickInterval
     });
 }
 
@@ -38799,6 +38799,7 @@ Axis.prototype = {
         var tickModel = opt.tickModel || this.getTickModel();
         var result = createAxisTicks(this, tickModel);
         var ticks = result.ticks;
+        var interval = result.optionTickInterval;
 
         var ticksCoords = map(ticks, function (tickValue) {
             return {
@@ -38810,7 +38811,7 @@ Axis.prototype = {
         var alignWithLabel = tickModel.get('alignWithLabel');
 
         fixOnBandTicksCoords(
-            this, ticksCoords, alignWithLabel, opt.clamp
+            this, ticksCoords, alignWithLabel, opt.clamp, interval
         );
 
         return ticksCoords;
@@ -38930,7 +38931,7 @@ function fixExtentWithBands(extent, nTick) {
 // splitLine/spliteArea should layout appropriately corresponding
 // to displayed labels. (So we should not use `getBandWidth` in this
 // case).
-function fixOnBandTicksCoords(axis, ticksCoords, alignWithLabel, clamp) {
+function fixOnBandTicksCoords(axis, ticksCoords, alignWithLabel, clamp, interval) {
     var ticksLen = ticksCoords.length;
 
     if (!axis.onBand || alignWithLabel || !ticksLen) {
@@ -38938,26 +38939,27 @@ function fixOnBandTicksCoords(axis, ticksCoords, alignWithLabel, clamp) {
     }
 
     var axisExtent = axis.getExtent();
+    var dataExtent = axis.scale.getExtent();
     var last;
-    var diffSize;
-    if (ticksLen === 1) {
-        ticksCoords[0].coord = axisExtent[0];
-        last = ticksCoords[1] = {coord: axisExtent[0]};
+
+    // distance between two scales
+    var shift = axisExtent[1] / ((dataExtent[1] - dataExtent[0]) + 1);
+
+    each$1(ticksCoords, function (ticksItem) {
+        ticksItem.coord -= shift / 2;
+    });
+
+    if (!isFunction$1(interval)) {
+        if (interval === 'auto') {
+            last = {coord: ticksCoords[ticksLen - 1].coord + shift};
+        }
+        else {
+            last = {coord: ticksCoords[ticksLen - 1].coord + shift * (+interval + 1)};
+        }
+        ticksCoords.push(last);
     }
     else {
-        var crossLen = ticksCoords[ticksLen - 1].tickValue - ticksCoords[0].tickValue;
-        var shift = (ticksCoords[ticksLen - 1].coord - ticksCoords[0].coord) / crossLen;
-
-        each$1(ticksCoords, function (ticksItem) {
-            ticksItem.coord -= shift / 2;
-        });
-
-        var dataExtent = axis.scale.getExtent();
-        diffSize = 1 + dataExtent[1] - ticksCoords[ticksLen - 1].tickValue;
-
-        last = {coord: ticksCoords[ticksLen - 1].coord + shift * diffSize};
-
-        ticksCoords.push(last);
+        last = ticksCoords[ticksLen - 1];
     }
 
     var inverse = axisExtent[0] > axisExtent[1];
@@ -39141,7 +39143,7 @@ var defaultOption = {
     name: '',
     // 'start' | 'middle' | 'end'
     nameLocation: 'end',
-    // By degree. By defualt auto rotate by nameLocation.
+    // By degree. By default auto rotate by nameLocation.
     nameRotate: null,
     nameTruncate: {
         maxWidth: null,
@@ -42444,8 +42446,31 @@ var clip = {
         return clipped;
     },
 
-    polar: function (coordSysClipArea) {
-        return false;
+    polar: function (coordSysClipArea, layout) {
+        var signR = layout.r0 <= layout.r ? 1 : -1;
+        // Make sure r is larger than r0
+        if (signR < 0) {
+            var r = layout.r;
+            layout.r = layout.r0;
+            layout.r0 = r;
+        }
+
+        var r = mathMin$4(layout.r, coordSysClipArea.r);
+        var r0 = mathMax$4(layout.r0, coordSysClipArea.r0);
+
+        layout.r = r;
+        layout.r0 = r0;
+
+        var clipped = r - r0 < 0;
+
+        // Reverse back
+        if (signR < 0) {
+            var r = layout.r;
+            layout.r = layout.r0;
+            layout.r0 = r;
+        }
+
+        return clipped;
     }
 };
 

@@ -1,6 +1,7 @@
 {
   "name": "@moon-land/echarts",
   "version": "1.0.0",
+  "private": false,
   "description": "A powerful charting and visualization library for browser",
   "license": "Apache-2.0",
   "keywords": [
